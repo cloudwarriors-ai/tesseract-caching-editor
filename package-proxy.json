@@ -1,0 +1,14 @@
+{
+  "name": "tesseract-production-proxy",
+  "version": "1.0.0",
+  "description": "Production proxy server for Tesseract Caching Editor",
+  "main": "proxy-server.js",
+  "scripts": {
+    "start": "node proxy-server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "http-proxy": "^1.18.1",
+    "cors": "^2.8.5"
+  }
+}

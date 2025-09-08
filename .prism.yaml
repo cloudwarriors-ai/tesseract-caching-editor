@@ -1,0 +1,48 @@
+# Prism Configuration for Tesseract Caching Service Lab Proxy API
+# This configuration enables advanced features for development and testing
+
+# Mock server configuration
+mock:
+  dynamic: true              # Generate realistic dynamic responses
+  validateRequest: true      # Validate incoming requests against OpenAPI spec
+  validateResponse: true     # Validate outgoing responses against OpenAPI spec
+  cors: true                # Enable CORS for frontend development
+  errors: true              # Include validation errors in responses
+
+# Example generation configuration
+examples:
+  # Prefer examples from OpenAPI spec over generated ones
+  useExamplesFromSpec: true
+  
+  # Generate realistic data when examples aren't available
+  generateRealistic: true
+
+# Server configuration  
+server:
+  host: "0.0.0.0"           # Allow connections from any interface
+  port: 4010                # Mock server port
+  
+# Logging configuration
+logging:
+  level: info               # Log level: error, warn, info, debug
+  pretty: true             # Pretty print logs for development
+
+# Response configuration
+response:
+  # Add realistic delays to simulate network latency
+  delay:
+    min: 10                # Minimum delay in ms
+    max: 100               # Maximum delay in ms
+    
+  # Content type preferences
+  contentTypes:
+    - "application/json"
+    
+# Development helpers
+development:
+  # Enable request/response logging
+  logRequests: true
+  logResponses: true
+  
+  # Add helpful headers for debugging
+  debugHeaders: true

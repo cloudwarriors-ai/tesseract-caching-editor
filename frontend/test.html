@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tesseract Caching Editor - Test</title>
+    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+    <script src="https://unpkg.com/@tanstack/react-query@5/dist/index.umd.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            height: 100vh;
+            background-color: #f8fafc;
+        }
+        
+        .container {
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 300px;
+            border-right: 1px solid #e2e8f0;
+            background: white;
+            overflow-y: auto;
+        }
+        
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: 600;
+        }
+        
+        .provider {
+            border-bottom: 1px solid #f1f5f9;
+        }
+        
+        .provider-header {
+            padding: 12px 16px;
+            background: #f8fafc;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        
+        .provider-header:hover {
+            background: #f1f5f9;
+        }
+        
+        .endpoint {
+            padding: 8px 24px;
+            font-size: 14px;
+            cursor: pointer;
+            border-left: 3px solid transparent;
+        }
+        
+        .endpoint:hover {
+            background: #f8fafc;
+        }
+        
+        .endpoint.selected {
+            background: #dbeafe;
+            border-left-color: #3b82f6;
+        }
+        
+        .method {
+            font-weight: 600;
+            margin-right: 8px;
+        }
+        
+        .method.GET { color: #059669; }
+        .method.POST { color: #dc2626; }
+        .method.PUT { color: #d97706; }
+        
+        .main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .toolbar {
+            padding: 12px 16px;
+            border-bottom: 1px solid #e2e8f0;
+            background: white;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .content {
+            flex: 1;
+            display: flex;
+        }
+        
+        .editor-area {
+            flex: 1;
+            background: white;
+            font-family: 'Monaco', 'Courier New', monospace;
+        }
+        
+        .preview-area {
+            width: 400px;
+            border-left: 1px solid #e2e8f0;
+            background: white;
+        }
+        
+        .loading {
+            padding: 32px;
+            text-align: center;
+            color: #64748b;
+        }
+        
+        .error {
+            padding: 32px;
+            text-align: center;
+            color: #dc2626;
+        }
+        
+        .btn {
+            padding: 6px 12px;
+            border: 1px solid #d1d5db;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 0 4px;
+        }
+        
+        .btn:hover {
+            background: #f3f4f6;
+        }
+        
+        .btn-primary {
+            background: #3b82f6;
+            color: white;
+            border-color: #3b82f6;
+        }
+        
+        .btn-primary:hover {
+            background: #2563eb;
+        }
+        
+        pre {
+            padding: 16px;
+            margin: 16px;
+            background: #f8fafc;
+            border-radius: 4px;
+            overflow: auto;
+            white-space: pre-wrap;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+        
+        .stats {
+            padding: 16px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-size: 14px;
+        }
+        
+        .stat {
+            display: inline-block;
+            margin-right: 16px;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 2px 6px;
+            font-size: 12px;
+            border-radius: 3px;
+            background: #e5e7eb;
+            color: #374151;
+            margin-left: 8px;
+        }
+        
+        .badge.modified {
+            background: #fbbf24;
+            color: #92400e;
+        }
+        
+        .no-selection {
+            flex: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            color: #64748b;
+        }
+        
+        .icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+        const { useQuery, QueryClient, QueryClientProvider } = ReactQuery;
+        
+        const queryClient = new QueryClient();
+        
+        // API functions
+        const api = {
+            getOrganizedCache: async () => {
+                const response = await fetch('http://localhost:4010/admin/cache/organized');
+                if (!response.ok) throw new Error('Failed to fetch cache data');
+                return response.json();
+            },
+            getCacheEntry: async (cacheKey) => {
+                const response = await fetch(`http://localhost:4010/admin/cache/entry?key=${encodeURIComponent(cacheKey)}`);
+                if (!response.ok) throw new Error('Failed to fetch cache entry');
+                return response.json();
+            },
+            modifyEntry: async (data) => {
+                const response = await fetch('http://localhost:4010/admin/cache/entry', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) throw new Error('Failed to modify entry');
+                return response.json();
+            },
+            testEntry: async (data) => {
+                const response = await fetch('http://localhost:4010/admin/cache/test', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(data)
+                });
+                if (!response.ok) throw new Error('Failed to test entry');
+                return response.json();
+            },
+        };
+        
+        const CacheStats = ({ data }) => {
+            if (!data) return null;
+            
+            return (
+                <div className="stats">
+                    <span className="stat">Providers: <strong>{data.total_providers}</strong></span>
+                    <span className="stat">Entries: <strong>{data.total_entries}</strong></span>
+                    <span className="stat">Modified: <strong>{data.modified_entries}</strong></span>
+                </div>
+            );
+        };
+        
+        const ProviderList = ({ providers, selectedEntry, onSelect }) => {
+            const [expanded, setExpanded] = useState(new Set(['httpbin.org', 'api.zoom.us']));
+            
+            const toggleProvider = (name) => {
+                const newExpanded = new Set(expanded);
+                if (newExpanded.has(name)) {
+                    newExpanded.delete(name);
+                } else {
+                    newExpanded.add(name);
+                }
+                setExpanded(newExpanded);
+            };
+            
+            return (
+                <div>
+                    {providers.map(provider => (
+                        <div key={provider.name} className="provider">
+                            <div 
+                                className="provider-header"
+                                onClick={() => toggleProvider(provider.name)}
+                            >
+                                {expanded.has(provider.name) ? '▼' : '▶'} {provider.name}
+                                {provider.stats.modified_count > 0 && (
+                                    <span className="badge modified">
+                                        {provider.stats.modified_count} modified
+                                    </span>
+                                )}
+                            </div>
+                            
+                            {expanded.has(provider.name) && provider.endpoints.map(endpoint => (
+                                <div 
+                                    key={endpoint.id}
+                                    className={`endpoint ${selectedEntry?.id === endpoint.id ? 'selected' : ''}`}
+                                    onClick={() => onSelect(endpoint)}
+                                >
+                                    <span className={`method ${endpoint.method}`}>{endpoint.method}</span>
+                                    {endpoint.path}
+                                    <span className="badge">{endpoint.status}</span>
+                                    {endpoint.is_modified && <span className="badge modified">MOD</span>}
+                                </div>
+                            ))}
+                        </div>
+                    ))}
+                </div>
+            );
+        };
+        
+        const EntryEditor = ({ entry }) => {
+            const [modified, setModified] = useState('');
+            const [isModified, setIsModified] = useState(false);
+            
+            useEffect(() => {
+                if (entry) {
+                    setModified(JSON.stringify(entry.body, null, 2));
+                    setIsModified(false);
+                }
+            }, [entry]);
+            
+            const handleSave = async () => {
+                try {
+                    const parsedBody = JSON.parse(modified);
+                    await api.modifyEntry({
+                        cache_key: entry.cache_key,
+                        modifications: {
+                            body: parsedBody
+                        },
+                        user_id: 'demo-user',
+                        notes: 'Test modification from frontend'
+                    });
+                    alert('Entry modified successfully!');
+                } catch (error) {
+                    alert('Error: ' + error.message);
+                }
+            };
+            
+            const handleTest = async () => {
+                try {
+                    const parsedBody = JSON.parse(modified);
+                    const result = await api.testEntry({
+                        cache_key: entry.cache_key,
+                        modifications: {
+                            body: parsedBody
+                        }
+                    });
+                    console.log('Test result:', result);
+                    alert('Test successful! Check console for details.');
+                } catch (error) {
+                    alert('Test failed: ' + error.message);
+                }
+            };
+            
+            if (!entry) {
+                return (
+                    <div className="no-selection">
+                        <div className="icon">📝</div>
+                        <h3>No Entry Selected</h3>
+                        <p>Select a cache entry from the browser to start editing</p>
+                    </div>
+                );
+            }
+            
+            return (
+                <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+                    <div className="toolbar">
+                        <div>
+                            <strong>{entry.method} {entry.path}</strong>
+                            <span className="badge">{entry.status}</span>
+                            {entry.is_modified && <span className="badge modified">Modified</span>}
+                        </div>
+                        <div>
+                            <button 
+                                className="btn" 
+                                onClick={handleTest}
+                                disabled={!isModified}
+                            >
+                                Test
+                            </button>
+                            <button 
+                                className="btn btn-primary" 
+                                onClick={handleSave}
+                                disabled={!isModified}
+                            >
+                                Save
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div style={{ flex: 1, padding: '16px' }}>
+                        <textarea
+                            value={modified}
+                            onChange={(e) => {
+                                setModified(e.target.value);
+                                setIsModified(true);
+                            }}
+                            style={{
+                                width: '100%',
+                                height: '100%',
+                                fontFamily: 'Monaco, Courier New, monospace',
+                                fontSize: '13px',
+                                border: '1px solid #d1d5db',
+                                borderRadius: '4px',
+                                padding: '12px'
+                            }}
+                        />
+                    </div>
+                </div>
+            );
+        };
+        
+        const EntryPreview = ({ entry }) => {
+            if (!entry) {
+                return (
+                    <div className="no-selection">
+                        <div className="icon">👁️</div>
+                        <h3>No Preview</h3>
+                        <p>Select an entry to see the preview</p>
+                    </div>
+                );
+            }
+            
+            return (
+                <div>
+                    <div className="toolbar">
+                        <strong>Preview</strong>
+                    </div>
+                    <pre>{JSON.stringify(entry, null, 2)}</pre>
+                </div>
+            );
+        };
+        
+        const App = () => {
+            const [selectedEntry, setSelectedEntry] = useState(null);
+            const [selectedCacheEntry, setSelectedCacheEntry] = useState(null);
+            
+            const { data: cacheData, isLoading, error } = useQuery({
+                queryKey: ['organized-cache'],
+                queryFn: api.getOrganizedCache,
+                refetchInterval: 5000,
+            });
+            
+            const { data: entryData } = useQuery({
+                queryKey: ['cache-entry', selectedEntry?.cache_key],
+                queryFn: () => api.getCacheEntry(selectedEntry.cache_key),
+                enabled: !!selectedEntry,
+            });
+            
+            useEffect(() => {
+                if (entryData) {
+                    setSelectedCacheEntry(entryData);
+                }
+            }, [entryData]);
+            
+            if (isLoading) {
+                return (
+                    <div className="loading">
+                        <div className="icon">⏳</div>
+                        <div>Loading cache data...</div>
+                    </div>
+                );
+            }
+            
+            if (error) {
+                return (
+                    <div className="error">
+                        <div className="icon">❌</div>
+                        <div>Error: {error.message}</div>
+                        <div>Make sure the mock server is running on http://localhost:4010</div>
+                    </div>
+                );
+            }
+            
+            return (
+                <div className="container">
+                    <div className="sidebar">
+                        <div className="sidebar-header">
+                            Cache Browser
+                        </div>
+                        <CacheStats data={cacheData} />
+                        <ProviderList 
+                            providers={cacheData?.providers || []}
+                            selectedEntry={selectedEntry}
+                            onSelect={setSelectedEntry}
+                        />
+                    </div>
+                    
+                    <div className="main">
+                        <div className="content">
+                            <div className="editor-area">
+                                <EntryEditor entry={selectedCacheEntry} />
+                            </div>
+                            
+                            <div className="preview-area">
+                                <EntryPreview entry={selectedCacheEntry} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+        
+        const Root = () => (
+            <QueryClientProvider client={queryClient}>
+                <App />
+            </QueryClientProvider>
+        );
+        
+        ReactDOM.render(<Root />, document.getElementById('root'));
+    </script>
+</body>
+</html>

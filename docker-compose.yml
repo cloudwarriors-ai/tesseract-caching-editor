@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # React Frontend (Production Mode)
+  tesseract-frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.demo
+    container_name: tesseract-frontend
+    ports:
+       - "3666:80"
+    environment:
+      - NODE_ENV=production
+      - REACT_APP_API_URL=http://tesseract-prism-proxy:4011
+    depends_on:
+      - production-proxy
+    networks:
+      - tesseract-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-T", "10", "http://127.0.0.1/health", "-O", "/dev/null"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+  # Production Proxy Server (Node.js)
+  production-proxy:
+    image: node:20-alpine
+    container_name: tesseract-production-proxy
+    ports:
+      - "4011:4011"
+    volumes:
+      - ./proxy-server.js:/app/proxy-server.js:ro
+      - ./package-proxy.json:/app/package.json:ro
+      - ./openapi-spec.yaml:/app/openapi-spec.yaml:ro
+    working_dir: /app
+    command: sh -c "npm install && node proxy-server.js"
+    environment:
+      - CACHEFLOW_URL=http://host.docker.internal:8000
+      - PORT=4011
+    networks:
+      - tesseract-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:4011/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+networks:
+  tesseract-network:
+    driver: bridge
+    name: tesseract-network

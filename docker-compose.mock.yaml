@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  prism-mock-server:
+    image: stoplight/prism:5
+    container_name: tesseract-prism-mock
+    ports:
+      - "4010:4010"
+    volumes:
+      - ./openapi-spec.yaml:/app/openapi-spec.yaml:ro
+      - ./.prism.yaml:/app/.prism.yaml:ro
+    command: >
+      mock 
+      /app/openapi-spec.yaml 
+      --host 0.0.0.0 
+      --port 4010 
+      --dynamic 
+      --validate-request 
+      --validate-response 
+      --cors
+    environment:
+      - LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4010/admin/cache/organized"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    networks:
+      - tesseract-network
+
+  # Optional: Run alongside the real backend for comparison testing
+  prism-proxy-server:
+    image: stoplight/prism:5
+    container_name: tesseract-prism-proxy
+    ports:
+      - "4011:4011"
+    volumes:
+      - ./openapi-spec.yaml:/app/openapi-spec.yaml:ro
+    command: >
+      proxy 
+      http://cacheflow:8000 
+      /app/openapi-spec.yaml 
+      --host 0.0.0.0 
+      --port 4011
+    environment:
+      - LOG_LEVEL=info
+    depends_on:
+      - prism-mock-server
+    networks:
+      - tesseract-network
+    profiles:
+      - proxy  # Only start with --profile proxy
+
+networks:
+  tesseract-network:
+    external: true
+    name: tesseract-network

@@ -1,0 +1,722 @@
+openapi: 3.0.3
+info:
+  title: Tesseract Caching Service Lab Proxy API
+  description: |
+    API specification for the Tesseract Caching Service Lab Proxy functionality.
+    These endpoints enable frontend developers to build interactive tools for 
+    browsing, editing, and testing cached API responses.
+  version: 1.0.0
+  contact:
+    name: Lab Proxy API
+servers:
+  - url: http://cacheflow:8000
+    description: Production server (container network)
+  - url: http://localhost:8000
+    description: Development server
+  - url: http://localhost:4010
+    description: Prism mock server
+
+paths:
+  /admin/cache/organized:
+    get:
+      summary: Get organized cache entries
+      description: Returns cache entries organized by provider/host for easy browsing
+      operationId: getOrganizedCache
+      responses:
+        '200':
+          description: Successfully retrieved organized cache data
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrganizedCacheResponse'
+              example:
+                providers:
+                  - name: "httpbin.org"
+                    host: "httpbin.org"
+                    endpoints:
+                      - id: "GET:/get:body:e3b0c44..."
+                        method: "GET"
+                        path: "/get"
+                        cache_key: "GET:/get:body:e3b0c44..."
+                        status: 200
+                        is_modified: false
+                        last_modified: null
+                        response_size: 296
+                        content_type: "application/json"
+                    stats:
+                      total_entries: 3
+                      last_activity: 1757292222.496519
+                      avg_response_size: 233
+                      modified_count: 1
+                  - name: "api.zoom.us"
+                    host: "api.zoom.us"
+                    endpoints:
+                      - id: "GET:/v2/users:auth:user123..."
+                        method: "GET"
+                        path: "/v2/users"
+                        cache_key: "GET:/v2/users:auth:user123..."
+                        status: 200
+                        is_modified: true
+                        last_modified: 1757292500.123
+                        response_size: 1024
+                        content_type: "application/json"
+                    stats:
+                      total_entries: 5
+                      last_activity: 1757292500.123
+                      avg_response_size: 512
+                      modified_count: 2
+                total_providers: 3
+                total_entries: 13
+                modified_entries: 1
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+
+  /admin/cache/entry:
+    get:
+      summary: Get cache entry by key
+      description: Retrieve a specific cache entry by cache key
+      operationId: getCacheEntry
+      parameters:
+        - name: key
+          in: query
+          required: true
+          description: The cache key identifier
+          schema:
+            type: string
+          example: "GET:/get:body:e3b0c44..."
+      responses:
+        '200':
+          description: Successfully retrieved cache entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CacheEntry'
+              example:
+                method: "GET"
+                path: "/get"
+                status: 200
+                headers:
+                  content-type: "application/json"
+                body:
+                  args: {}
+                  headers:
+                    Host: "httpbin.org"
+                  url: "https://httpbin.org/get"
+                timestamp: 1757261223.834
+                ttl: null
+                key_source: "body_hash"
+                lab_metadata:
+                  is_modified: true
+                  original_body:
+                    args: {}
+                    headers:
+                      Host: "httpbin.org"
+                    url: "https://httpbin.org/get"
+                  original_headers:
+                    content-type: "application/json"
+                  original_status: 200
+                  modified_by: "developer@company.com"
+                  modified_at: 1757292222.496519
+                  modification_notes: "Testing error scenario"
+                  modification_id: "mod_abc12345"
+                  original_preserved: true
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+    put:
+      summary: Modify cache entry
+      description: Modify a cache entry with lab proxy changes. Preserves original entry for reset functionality.
+      operationId: modifyCacheEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ModifyCacheEntryRequest'
+            example:
+              cache_key: "GET:/get:body:e3b0c44..."
+              modifications:
+                status: 404
+                body:
+                  error: "Not found - modified for testing"
+                  code: "TEST_ERROR"
+                headers:
+                  X-Custom-Header: "test-value"
+                  Content-Type: "application/json"
+              user_id: "developer@company.com"
+              notes: "Testing 404 error scenario for frontend"
+      responses:
+        '200':
+          description: Successfully modified cache entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ModifyCacheEntryResponse'
+              example:
+                success: true
+                cache_key: "GET:/get:body:e3b0c44..."
+                modifications_applied: 3
+                modified_by: "developer@company.com"
+                modification_id: "mod_abc12345"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /admin/cache/entry/original:
+    get:
+      summary: Get original cache entry
+      description: Retrieve the original unmodified version of a cache entry
+      operationId: getOriginalCacheEntry
+      parameters:
+        - name: cache_key
+          in: query
+          required: true
+          description: The cache key identifier
+          schema:
+            type: string
+          example: "GET:/get:body:e3b0c44..."
+      responses:
+        '200':
+          description: Successfully retrieved original cache entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OriginalCacheEntry'
+              example:
+                method: "GET"
+                path: "/get"
+                status: 200
+                headers:
+                  content-type: "application/json"
+                body:
+                  args: {}
+                  headers:
+                    Host: "httpbin.org"
+                  url: "https://httpbin.org/get"
+                timestamp: 1757261223.834
+                ttl: null
+                key_source: "body_hash"
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+
+  /admin/cache/entry/reset:
+    post:
+      summary: Reset cache entry to original
+      description: Reset a modified cache entry back to its original state
+      operationId: resetCacheEntry
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetCacheEntryRequest'
+            example:
+              cache_key: "GET:/get:body:e3b0c44..."
+              user_id: "developer@company.com"
+      responses:
+        '200':
+          description: Successfully reset cache entry
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResetCacheEntryResponse'
+              example:
+                success: true
+                cache_key: "GET:/get:body:e3b0c44..."
+                reset_by: "developer@company.com"
+                reset_at: 1757295800.123
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /admin/cache/test:
+    post:
+      summary: Test cache modifications
+      description: Test modifications without permanently saving them. Validates response structure.
+      operationId: testCacheModifications
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TestCacheModificationsRequest'
+            example:
+              cache_key: "GET:/get:body:e3b0c44..."
+              modifications:
+                status: 500
+                body:
+                  error: "Internal server error simulation"
+      responses:
+        '200':
+          description: Successfully tested modifications
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TestCacheModificationsResponse'
+              example:
+                success: true
+                test_result:
+                  status: 500
+                  headers: {}
+                  body:
+                    error: "Internal server error simulation"
+                  response_time_ms: 45
+                  validation:
+                    is_valid_json: true
+                    has_required_fields: true
+                    warnings: []
+                    errors: []
+                  size_bytes: 48
+                modifications_tested: 2
+                response_size: 48
+                status_code: 500
+                content_type: "application/json"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+    OrganizedCacheResponse:
+      type: object
+      required:
+        - providers
+        - total_providers
+        - total_entries
+        - modified_entries
+      properties:
+        providers:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProviderNode'
+        total_providers:
+          type: integer
+          minimum: 0
+        total_entries:
+          type: integer
+          minimum: 0
+        modified_entries:
+          type: integer
+          minimum: 0
+
+    ProviderNode:
+      type: object
+      required:
+        - name
+        - host
+        - endpoints
+        - stats
+      properties:
+        name:
+          type: string
+          description: Provider hostname
+          example: "httpbin.org"
+        host:
+          type: string
+          description: Same as name (hostname)
+          example: "httpbin.org"
+        endpoints:
+          type: array
+          items:
+            $ref: '#/components/schemas/EndpointNode'
+        stats:
+          $ref: '#/components/schemas/ProviderStats'
+
+    ProviderStats:
+      type: object
+      required:
+        - total_entries
+        - avg_response_size
+        - modified_count
+      properties:
+        total_entries:
+          type: integer
+          minimum: 0
+        last_activity:
+          type: number
+          nullable: true
+          description: Unix timestamp
+        avg_response_size:
+          type: number
+          minimum: 0
+          description: Average response size in bytes
+        modified_count:
+          type: integer
+          minimum: 0
+
+    EndpointNode:
+      type: object
+      required:
+        - id
+        - method
+        - path
+        - cache_key
+        - status
+        - is_modified
+        - response_size
+        - content_type
+      properties:
+        id:
+          type: string
+          description: Same as cache_key
+        method:
+          type: string
+          enum: ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
+        path:
+          type: string
+          example: "/get"
+        cache_key:
+          type: string
+          description: Full cache key identifier
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        is_modified:
+          type: boolean
+        last_modified:
+          type: number
+          nullable: true
+          description: Unix timestamp if modified
+        response_size:
+          type: integer
+          minimum: 0
+          description: Response body size in bytes
+        content_type:
+          type: string
+          example: "application/json"
+
+    CacheEntry:
+      type: object
+      required:
+        - method
+        - path
+        - status
+        - headers
+        - body
+        - timestamp
+        - key_source
+      properties:
+        method:
+          type: string
+          enum: ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
+        path:
+          type: string
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        headers:
+          type: object
+          additionalProperties: true
+        body:
+          description: JSON response body
+        timestamp:
+          type: number
+          description: Unix timestamp
+        ttl:
+          type: number
+          nullable: true
+          description: Time to live in seconds
+        key_source:
+          type: string
+          enum: ["auth", "body_hash", "account_id"]
+        lab_metadata:
+          $ref: '#/components/schemas/LabMetadata'
+
+    OriginalCacheEntry:
+      type: object
+      required:
+        - method
+        - path
+        - status
+        - headers
+        - body
+        - timestamp
+        - key_source
+      properties:
+        method:
+          type: string
+          enum: ["GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"]
+        path:
+          type: string
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        headers:
+          type: object
+          additionalProperties: true
+        body:
+          description: JSON response body
+        timestamp:
+          type: number
+          description: Unix timestamp
+        ttl:
+          type: number
+          nullable: true
+          description: Time to live in seconds
+        key_source:
+          type: string
+          enum: ["auth", "body_hash", "account_id"]
+
+    LabMetadata:
+      type: object
+      required:
+        - is_modified
+        - original_body
+        - original_headers
+        - original_status
+        - modified_by
+        - modified_at
+        - modification_notes
+        - modification_id
+        - original_preserved
+      properties:
+        is_modified:
+          type: boolean
+        original_body:
+          description: Original JSON response body
+        original_headers:
+          type: object
+          additionalProperties: true
+        original_status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        modified_by:
+          type: string
+        modified_at:
+          type: number
+          description: Unix timestamp
+        modification_notes:
+          type: string
+        template_id:
+          type: string
+          nullable: true
+        modification_id:
+          type: string
+        original_preserved:
+          type: boolean
+
+    ModifyCacheEntryRequest:
+      type: object
+      required:
+        - cache_key
+        - modifications
+        - user_id
+        - notes
+      properties:
+        cache_key:
+          type: string
+        modifications:
+          $ref: '#/components/schemas/Modifications'
+        user_id:
+          type: string
+        notes:
+          type: string
+
+    Modifications:
+      type: object
+      properties:
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        body:
+          description: Replace response body content
+        headers:
+          type: object
+          additionalProperties: true
+          description: Replace or add response headers
+
+    ModifyCacheEntryResponse:
+      type: object
+      required:
+        - success
+        - cache_key
+        - modifications_applied
+        - modified_by
+        - modification_id
+      properties:
+        success:
+          type: boolean
+        cache_key:
+          type: string
+        modifications_applied:
+          type: integer
+          minimum: 0
+        modified_by:
+          type: string
+        modification_id:
+          type: string
+
+    ResetCacheEntryRequest:
+      type: object
+      required:
+        - cache_key
+        - user_id
+      properties:
+        cache_key:
+          type: string
+        user_id:
+          type: string
+
+    ResetCacheEntryResponse:
+      type: object
+      required:
+        - success
+        - cache_key
+        - reset_by
+        - reset_at
+      properties:
+        success:
+          type: boolean
+        cache_key:
+          type: string
+        reset_by:
+          type: string
+        reset_at:
+          type: number
+          description: Unix timestamp
+
+    TestCacheModificationsRequest:
+      type: object
+      required:
+        - cache_key
+        - modifications
+      properties:
+        cache_key:
+          type: string
+        modifications:
+          $ref: '#/components/schemas/Modifications'
+
+    TestCacheModificationsResponse:
+      type: object
+      required:
+        - success
+        - test_result
+        - modifications_tested
+        - response_size
+        - status_code
+        - content_type
+      properties:
+        success:
+          type: boolean
+        test_result:
+          $ref: '#/components/schemas/TestResult'
+        modifications_tested:
+          type: integer
+          minimum: 0
+        response_size:
+          type: integer
+          minimum: 0
+        status_code:
+          type: integer
+          minimum: 100
+          maximum: 599
+        content_type:
+          type: string
+
+    TestResult:
+      type: object
+      required:
+        - status
+        - headers
+        - body
+        - response_time_ms
+        - validation
+        - size_bytes
+      properties:
+        status:
+          type: integer
+          minimum: 100
+          maximum: 599
+        headers:
+          type: object
+          additionalProperties: true
+        body:
+          description: Test response body
+        response_time_ms:
+          type: number
+          minimum: 0
+        validation:
+          $ref: '#/components/schemas/ValidationResult'
+        size_bytes:
+          type: integer
+          minimum: 0
+
+    ValidationResult:
+      type: object
+      required:
+        - is_valid_json
+        - has_required_fields
+        - warnings
+        - errors
+      properties:
+        is_valid_json:
+          type: boolean
+        has_required_fields:
+          type: boolean
+        warnings:
+          type: array
+          items:
+            type: string
+        errors:
+          type: array
+          items:
+            type: string
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Bad Request - Missing required parameters or invalid JSON
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "cache_key is required"
+
+    NotFound:
+      description: Not Found - Cache entry doesn't exist
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "Cache entry not found"
+
+    UnprocessableEntity:
+      description: Unprocessable Entity - Invalid parameter types
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "Invalid parameter types"
+
+    InternalServerError:
+      description: Internal Server Error - Database connection issues or unexpected errors
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            detail: "Internal server error"

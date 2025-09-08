@@ -1,0 +1,45 @@
+{
+  "name": "tesseract-caching-editor-mock-server",
+  "version": "1.0.0",
+  "description": "Mock server for Tesseract Caching Service Lab Proxy API development and testing",
+  "main": "index.js",
+  "scripts": {
+    "mock-server": "prism mock openapi-spec.yaml --host 0.0.0.0 --port 4010",
+    "mock-server-dynamic": "prism mock openapi-spec.yaml --host 0.0.0.0 --port 4010 --dynamic",
+    "mock-server-validate": "prism mock openapi-spec.yaml --host 0.0.0.0 --port 4010 --validate-request --validate-response",
+    "validate-spec": "echo 'Note: Prism CLI v5 does not have validate command. Validation happens during mock/proxy startup.'",
+    "proxy-real": "prism proxy http://cacheflow:8000 openapi-spec.yaml --host 0.0.0.0 --port 4010",
+    "test-endpoints": "npm run test-organized && npm run test-cache-entry && npm run test-modify && npm run test-reset && npm run test-test",
+    "test-organized": "curl -s http://localhost:4010/admin/cache/organized | jq .",
+    "test-cache-entry": "curl -s \"http://localhost:4010/admin/cache/entry?key=GET:/get:body:e3b0c44...\" | jq .",
+    "test-modify": "curl -s -X PUT http://localhost:4010/admin/cache/entry -H 'Content-Type: application/json' -d '{\"cache_key\":\"GET:/get:body:e3b0c44...\",\"modifications\":{\"status\":404},\"user_id\":\"test\",\"notes\":\"test\"}' | jq .",
+    "test-reset": "curl -s -X POST http://localhost:4010/admin/cache/entry/reset -H 'Content-Type: application/json' -d '{\"cache_key\":\"GET:/get:body:e3b0c44...\",\"user_id\":\"test\"}' | jq .",
+    "test-test": "curl -s -X POST http://localhost:4010/admin/cache/test -H 'Content-Type: application/json' -d '{\"cache_key\":\"GET:/get:body:e3b0c44...\",\"modifications\":{\"status\":500}}' | jq .",
+    "start": "npm run mock-server",
+    "dev": "npm run mock-server-dynamic",
+    "validate": "npm run validate-spec"
+  },
+  "keywords": [
+    "mock-server",
+    "prism",
+    "api",
+    "tesseract",
+    "caching",
+    "lab-proxy",
+    "development"
+  ],
+  "devDependencies": {
+    "@stoplight/prism-cli": "^5.8.1"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "."
+  },
+  "author": "Tesseract Caching Editor Team",
+  "license": "MIT"
+}
