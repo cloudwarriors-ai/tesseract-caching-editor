@@ -5,13 +5,14 @@ services:
   tesseract-frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile.demo
+      dockerfile: Dockerfile
     container_name: tesseract-frontend
     ports:
        - "3666:80"
+    command: sh -c "npm run build && npm run preview -- --host 0.0.0.0 --port 5173"
     environment:
       - NODE_ENV=production
-      - REACT_APP_API_URL=http://tesseract-prism-proxy:4011
+      - VITE_API_URL=https://dev-cacheflow.pscx.ai
     depends_on:
       - production-proxy
     networks:

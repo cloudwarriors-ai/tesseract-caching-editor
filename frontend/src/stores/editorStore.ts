@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { devtools } from 'zustand/middleware';
 import type { CacheEntry, OriginalCacheEntry, ValidationResult, Modifications } from '../types/api';
-import { deepClone, isValidJSON } from '../lib/utils';
+import { deepClone } from '../lib/utils';
 
 interface EditorHistoryItem {
   entry: CacheEntry;
@@ -359,7 +359,7 @@ export const useEditorStore = create<EditorStore>()(
     }),
     {
       name: 'editor-store',
-      enabled: process.env.NODE_ENV === 'development',
+      enabled: typeof process !== 'undefined' && process.env.NODE_ENV === 'development',
     }
   )
 );

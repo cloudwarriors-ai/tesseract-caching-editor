@@ -1,8 +1,7 @@
 import { useEffect, useCallback } from 'react';
 import { useEditorStore } from '../stores/editorStore';
-import { useCacheEntry, useOriginalCacheEntry, useCacheOperations } from './useCache';
 import { useNotifications } from '../stores/uiStore';
-import type { Modifications } from '../types/api';
+import { useCacheOperations, useCacheEntry, useOriginalCacheEntry } from './useCache';
 import { debounce } from '../lib/utils';
 
 // Main editor hook
@@ -235,21 +234,21 @@ export const useAutoSave = (
 
 // Hook for editor preferences synchronization
 export const useEditorSync = () => {
-  const { fontSize, wordWrap, lineNumbers, minimap, theme } = useEditorStore(state => ({
-    fontSize: state.editorFontSize || 14,
-    wordWrap: state.editorWordWrap !== false,
-    lineNumbers: state.editorLineNumbers !== false,
-    minimap: state.editorMinimap === true,
-    theme: state.editorTheme || 'vs-light',
-  }));
-  
+  const editorPrefs = {
+    fontSize: 14,
+    wordWrap: true,
+    lineNumbers: true,
+    minimap: false,
+    theme: 'vs-dark' as const
+  };
+
   return {
     editorOptions: {
-      fontSize,
-      wordWrap: wordWrap ? 'on' : 'off',
-      lineNumbers: lineNumbers ? 'on' : 'off',
-      minimap: { enabled: minimap },
-      theme,
+      fontSize: editorPrefs.fontSize,
+      wordWrap: editorPrefs.wordWrap ? 'on' : 'off',
+      lineNumbers: editorPrefs.lineNumbers ? 'on' : 'off',
+      minimap: { enabled: editorPrefs.minimap },
+      theme: editorPrefs.theme,
       automaticLayout: true,
       scrollBeyondLastLine: false,
       renderWhitespace: 'boundary',

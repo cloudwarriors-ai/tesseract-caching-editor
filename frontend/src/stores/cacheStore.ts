@@ -162,8 +162,8 @@ export const useCacheStore = create<CacheStore>()(
       loadState: () => {
         const saved = storage.get('cache-store', {});
         set({
-          selectedEntry: saved.selectedEntry || null,
-          expandedProviders: saved.expandedProviders || [],
+          selectedEntry: (saved as any).selectedEntry || null,
+          expandedProviders: (saved as any).expandedProviders || [],
         });
       },
       
@@ -175,7 +175,7 @@ export const useCacheStore = create<CacheStore>()(
     }),
     {
       name: 'cache-store',
-      enabled: process.env.NODE_ENV === 'development',
+      enabled: typeof process !== 'undefined' && process.env.NODE_ENV === 'development',
     }
   )
 );

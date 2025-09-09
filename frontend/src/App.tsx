@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
+// Material UI imports will be added as we migrate components
+// import { ThemeProvider, createTheme } from '@mui/material/styles';
+// import { CssBaseline, Box, AppBar, Toolbar, Typography } from '@mui/material';
+// import { Toaster } from './components/ui/Toaster';
 import { CacheBrowser } from './components/cache-browser/CacheBrowser';
 import { MonacoEditor } from './components/editor/MonacoEditor';
 import { HeadersEditor } from './components/editor/HeadersEditor';
@@ -8,7 +12,6 @@ import { StatusEditor } from './components/editor/StatusEditor';
 import { EditorToolbar } from './components/editor/EditorToolbar';
 import { PreviewPanel } from './components/preview/PreviewPanel';
 import { useLayout } from './stores/uiStore';
-import { useCacheStore } from './stores/cacheStore';
 import { cn } from './lib/utils';
 import type { EndpointNode } from './types/api';
 
@@ -16,15 +19,28 @@ import type { EndpointNode } from './types/api';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60, // 1 minute
+      staleTime: 1000 * 60 * 5, // 5 minutes
       retry: 2,
+      gcTime: 1000 * 60 * 30, // 30 minutes
     },
   },
 });
 
+// Material UI theme will be configured as we migrate components
+// const theme = createTheme({
+//   palette: {
+//     mode: 'dark',
+//     primary: {
+//       main: '#1976d2',
+//     },
+//     secondary: {
+//       main: '#dc004e',
+//     },
+//   },
+// });
+
 function App() {
   const { sidebarCollapsed, previewPanelVisible, previewPanelSize } = useLayout();
-  const selectedEntry = useCacheStore(state => state.selectedEntry);
   const [selectedCacheKey, setSelectedCacheKey] = useState<string | null>(null);
   const [editorTab, setEditorTab] = useState<'body' | 'headers' | 'status'>('body');
   
@@ -120,13 +136,12 @@ function App() {
           <PreviewPanel 
             cacheKey={selectedCacheKey}
             className="flex-shrink-0"
-            style={{ width: `${previewWidth}%` }}
           />
         )}
       </div>
       
       {/* React Query DevTools */}
-      {process.env.NODE_ENV === 'development' && (
+      {typeof process !== 'undefined' && (process.env as any).NODE_ENV === 'development' && (
         <ReactQueryDevtools initialIsOpen={false} />
       )}
     </QueryClientProvider>

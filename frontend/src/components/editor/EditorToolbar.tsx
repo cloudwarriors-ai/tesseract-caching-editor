@@ -1,4 +1,4 @@
-import { Save, TestTube, RotateCcw, Play, Loader2, History } from 'lucide-react';
+import { Save, RotateCcw, TestTube, AlertCircle, Loader2, History } from 'lucide-react';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { useEditor } from '../../hooks/useEditor';
@@ -55,9 +55,8 @@ export const EditorToolbar = ({ cacheKey }: EditorToolbarProps) => {
     );
   }
   
-  const hasValidationErrors = editorActions.validationErrors?.errors.length > 0;
-  const hasValidationWarnings = editorActions.validationErrors?.warnings.length > 0;
-  
+  const hasValidationErrors = (editorActions.validationErrors?.errors?.length || 0) > 0 || (editorActions.validationErrors?.warnings?.length || 0) > 0;
+
   return (
     <div className="flex items-center justify-between p-3 border-b border-border bg-muted/30">
       {/* Left Side - Entry Info */}
@@ -79,16 +78,21 @@ export const EditorToolbar = ({ cacheKey }: EditorToolbarProps) => {
             </Badge>
           )}
           
-          {hasValidationErrors && (
-            <Badge variant="destructive" className="text-xs">
-              {editorActions.validationErrors.errors.length} Error{editorActions.validationErrors.errors.length !== 1 ? 's' : ''}
-            </Badge>
-          )}
-          
-          {hasValidationWarnings && (
-            <Badge variant="warning" className="text-xs">
-              {editorActions.validationErrors.warnings.length} Warning{editorActions.validationErrors.warnings.length !== 1 ? 's' : ''}
-            </Badge>
+          {editorActions.validationErrors && (
+            <div className="flex items-center gap-2">
+              {(editorActions.validationErrors.errors?.length || 0) > 0 && (
+                <Badge variant="destructive" className="text-xs">
+                  <AlertCircle className="w-3 h-3 mr-1" />
+                  {editorActions.validationErrors.errors?.length || 0} errors
+                </Badge>
+              )}
+              {(editorActions.validationErrors.warnings?.length || 0) > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  <AlertCircle className="w-3 h-3 mr-1" />
+                  {editorActions.validationErrors.warnings?.length || 0} warnings
+                </Badge>
+              )}
+            </div>
           )}
           
           {editorActions.isSaving && (

@@ -2,7 +2,7 @@ import { AlertCircle, CheckCircle, AlertTriangle, Info, RefreshCw } from 'lucide
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { useEditor } from '../../hooks/useEditor';
-import type { ValidationResult } from '../../types/api';
+// import type { ValidationResult } from '../../types/api';
 
 interface ValidationPanelProps {
   cacheKey: string | null;
@@ -21,17 +21,17 @@ export const ValidationPanel = ({ cacheKey }: ValidationPanelProps) => {
   }
   
   const validation = editorActions.validationErrors;
-  const hasErrors = validation?.errors.length > 0;
-  const hasWarnings = validation?.warnings.length > 0;
-  const isValid = validation?.is_valid_json && validation?.has_required_fields;
+  const hasErrors = (validation?.errors?.length || 0) > 0;
+  const hasWarnings = (validation?.warnings?.length || 0) > 0;
+  // const isValid = validation?.is_valid_json && validation?.has_required_fields;
   
   // Calculate validation score
   const getValidationScore = (): number => {
     if (!validation) return 0;
     
     let score = 100;
-    score -= validation.errors.length * 20; // Heavy penalty for errors
-    score -= validation.warnings.length * 5; // Light penalty for warnings
+    score -= (validation.errors?.length || 0) * 20; // Heavy penalty for errors
+    score -= (validation.warnings?.length || 0) * 5; // Light penalty for warnings
     
     if (!validation.is_valid_json) score -= 30;
     if (!validation.has_required_fields) score -= 20;
@@ -160,7 +160,7 @@ export const ValidationPanel = ({ cacheKey }: ValidationPanelProps) => {
           {hasErrors && (
             <ValidationSection
               title="Errors"
-              items={validation.errors}
+              items={validation?.errors || []}
               icon={<AlertCircle className="w-4 h-4 text-red-600" />}
               bgColor="bg-red-50 dark:bg-red-950"
               textColor="text-red-600"
@@ -171,7 +171,7 @@ export const ValidationPanel = ({ cacheKey }: ValidationPanelProps) => {
           {hasWarnings && (
             <ValidationSection
               title="Warnings"
-              items={validation.warnings}
+              items={validation?.warnings || []}
               icon={<AlertTriangle className="w-4 h-4 text-yellow-600" />}
               bgColor="bg-yellow-50 dark:bg-yellow-950"
               textColor="text-yellow-600"
