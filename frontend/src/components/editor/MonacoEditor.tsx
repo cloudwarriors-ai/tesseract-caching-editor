@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from 'react';
+import { useRef, useCallback } from 'react';
 import Editor from '@monaco-editor/react';
 import type { editor } from 'monaco-editor';
 import { useEditorPreferences } from '../../stores/uiStore';
@@ -13,7 +13,7 @@ interface MonacoEditorProps {
 
 export const MonacoEditor = ({ cacheKey, className }: MonacoEditorProps) => {
   const editorRef = useRef<editor.IStandaloneCodeEditor | null>(null);
-  const { editorOptions } = useEditorPreferences();
+  const editorSettings = useEditorPreferences();
   const editorActions = useEditor(cacheKey);
   
   // Set up keyboard shortcuts
@@ -23,7 +23,7 @@ export const MonacoEditor = ({ cacheKey, className }: MonacoEditorProps) => {
     editorRef.current = editor;
     
     // Configure JSON language features
-    const monaco = editor.getModel()?.getLanguageId() === 'json' ? window.monaco : null;
+    const monaco = editor.getModel()?.getLanguageId() === 'json' ? (window as any).monaco : null;
     if (monaco) {
       // Enable JSON schema validation
       monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
@@ -72,7 +72,7 @@ export const MonacoEditor = ({ cacheKey, className }: MonacoEditorProps) => {
     if (!editorActions.currentEntry) return '';
     
     const content = editorActions.currentEntry.body;
-    if (typeof content === 'string') {
+    if (typeof window !== 'undefined' && (window as any).monaco) {
       // Try to format if it's JSON
       if (isValidJSON(content)) {
         return formatJSON(JSON.parse(content));
@@ -149,10 +149,13 @@ export const MonacoEditor = ({ cacheKey, className }: MonacoEditorProps) => {
         <Editor
           value={getEditorValue()}
           language="json"
-          theme={editorOptions.theme}
+          theme={editorSettings.theme}
           options={{
-            ...editorOptions,
             readOnly: editorActions.isSaving,
+            fontSize: editorSettings.fontSize,
+            wordWrap: editorSettings.wordWrap ? 'on' : 'off',
+            lineNumbers: editorSettings.lineNumbers ? 'on' : 'off',
+            minimap: { enabled: editorSettings.minimap },
           }}
           onMount={handleEditorDidMount}
           onChange={handleEditorChange}

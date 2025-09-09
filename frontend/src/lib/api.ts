@@ -15,9 +15,7 @@ import type {
 
 // API configuration
 export const API_CONFIG = {
-  BASE_URL: import.meta.env.NODE_ENV === 'development' 
-    ? 'http://localhost:4010'  // Mock server for development
-    : 'http://cacheflow:8000', // Real backend for production
+  BASE_URL: 'https://dev-cacheflow.pscx.ai',
   ENDPOINTS: {
     ORGANIZED_CACHE: '/admin/cache/organized',
     CACHE_ENTRY: '/admin/cache/entry',
@@ -30,13 +28,18 @@ export const API_CONFIG = {
 
 // HTTP client with error handling
 class ApiError extends Error {
+  public status: number;
+  public response?: any;
+  
   constructor(
     message: string,
-    public status: number,
-    public response?: any
+    status: number,
+    response?: any
   ) {
     super(message);
     this.name = 'ApiError';
+    this.status = status;
+    this.response = response;
   }
 }
 

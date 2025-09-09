@@ -262,7 +262,8 @@ interface FormattedJsonViewProps {
 }
 
 const FormattedJsonView = ({ data, level = 0 }: FormattedJsonViewProps) => {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  // TODO: Implement collapsible JSON view functionality
+  // const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   
   if (data === null) return <span className="text-muted-foreground">null</span>;
   if (data === undefined) return <span className="text-muted-foreground">undefined</span>;

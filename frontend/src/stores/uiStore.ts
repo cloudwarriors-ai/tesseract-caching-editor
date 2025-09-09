@@ -206,7 +206,7 @@ export const useUiStore = create<UiStore>()(
     ),
     {
       name: 'ui-store',
-      enabled: process.env.NODE_ENV === 'development',
+      enabled: typeof process !== 'undefined' && process.env.NODE_ENV === 'development',
     }
   )
 );

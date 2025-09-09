@@ -291,6 +291,68 @@
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
         }
+        
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background: white;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1);
+        }
+        
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #64748b;
+        }
+        
+        .modal-close:hover {
+            color: #374151;
+        }
+        
+        .test-result {
+            font-family: 'Monaco', 'Courier New', monospace;
+            font-size: 13px;
+            background: #f8fafc;
+            padding: 16px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            overflow-x: auto;
+        }
+        
+        .test-success {
+            border-left: 4px solid #10b981;
+        }
+        
+        .test-error {
+            border-left: 4px solid #ef4444;
+        }
     </style>
 </head>
 <body>
@@ -327,16 +389,12 @@
             
             useEffect(() => {
                 fetchData();
-                
-                // Auto-refresh every 5 seconds
-                const interval = setInterval(fetchData, 5000);
-                return () => clearInterval(interval);
             }, [fetchData]);
             
             return { data, loading, error, refetch: fetchData };
         };
         
-        const CacheStats = ({ data }) => {
+        const CacheStats = ({ data, onRefresh, loading }) => {
             if (!data) return null;
             
             return (
@@ -344,6 +402,14 @@
                     <span className="stat">Providers: <strong>{data.total_providers}</strong></span>
                     <span className="stat">Entries: <strong>{data.total_entries}</strong></span>
                     <span className="stat">Modified: <strong>{data.modified_entries}</strong></span>
+                    <button 
+                        className="btn" 
+                        onClick={onRefresh}
+                        disabled={loading}
+                        style={{marginLeft: '8px', fontSize: '12px'}}
+                    >
+                        {loading ? '🔄 Refreshing...' : '🔄 Refresh'}
+                    </button>
                 </div>
             );
         };
@@ -403,11 +469,32 @@
             );
         };
         
-        const EntryEditor = ({ entry, onSave, onTest }) => {
+        const TestResultModal = ({ isOpen, onClose, result, isError }) => {
+            if (!isOpen) return null;
+            
+            return (
+                <div className="modal" onClick={onClose}>
+                    <div className="modal-content" onClick={(e) => e.stopPropagation()}>
+                        <div className="modal-header">
+                            <h3>{isError ? '❌ Test Failed' : '✅ Test Successful'}</h3>
+                            <button className="modal-close" onClick={onClose}>×</button>
+                        </div>
+                        <div className={`test-result ${isError ? 'test-error' : 'test-success'}`}>
+                            {typeof result === 'string' ? result : JSON.stringify(result, null, 2)}
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const EntryEditor = ({ entry, selectedEntry, onSave, onTest }) => {
             const [modified, setModified] = useState('');
             const [isModified, setIsModified] = useState(false);
             const [isSaving, setIsSaving] = useState(false);
             const [isTesting, setIsTesting] = useState(false);
+            const [testModalOpen, setTestModalOpen] = useState(false);
+            const [testResult, setTestResult] = useState(null);
+            const [testError, setTestError] = useState(false);
             
             useEffect(() => {
                 if (entry) {
@@ -421,11 +508,18 @@
                     setIsSaving(true);
                     const parsedBody = JSON.parse(modified);
                     
-                    const response = await fetch('http://localhost:4010/admin/cache/entry', {
+                    console.log('Saving with cache_key:', entry.cache_key);
+                    console.log('Entry object:', entry);
+                    
+                    if (!selectedEntry?.id) {
+                        throw new Error('No cache key available. Please select a cache entry first.');
+                    }
+                    
+                    const response = await fetch('https://dev-cacheflow.pscx.ai/admin/cache/entry', {
                         method: 'PUT',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
-                            cache_key: entry.cache_key,
+                            cache_key: selectedEntry.id,
                             modifications: { body: parsedBody },
                             user_id: 'demo-user',
                             notes: 'Demo modification from Playwright test'
@@ -451,24 +545,39 @@
                     setIsTesting(true);
                     const parsedBody = JSON.parse(modified);
                     
-                    const response = await fetch('http://localhost:4010/admin/cache/test', {
+                    console.log('Testing with cache_key:', entry.cache_key);
+                    console.log('Entry object:', entry);
+                    
+                    if (!selectedEntry?.id) {
+                        throw new Error('No cache key available. Please select a cache entry first.');
+                    }
+                    
+                    const response = await fetch('https://dev-cacheflow.pscx.ai/admin/cache/test', {
                         method: 'POST',
                         headers: {'Content-Type': 'application/json'},
                         body: JSON.stringify({
-                            cache_key: entry.cache_key,
+                            cache_key: selectedEntry.id,
                             modifications: { body: parsedBody }
                         })
                     });
                     
-                    if (!response.ok) throw new Error(`Test failed: ${response.statusText}`);
+                    if (!response.ok) {
+                        const errorData = await response.text();
+                        console.error('❌ Test failed response:', response.status, response.statusText, errorData);
+                        throw new Error(`Test failed: ${response.status} ${response.statusText} - ${errorData}`);
+                    }
                     
                     const result = await response.json();
                     console.log('✅ Test successful:', result);
-                    alert('✅ Test successful! Check console for details.');
+                    setTestResult(result);
+                    setTestError(false);
+                    setTestModalOpen(true);
                     onTest && onTest(result);
                 } catch (error) {
                     console.error('❌ Test failed:', error);
-                    alert('❌ Test failed: ' + error.message);
+                    setTestResult(error.message);
+                    setTestError(true);
+                    setTestModalOpen(true);
                 } finally {
                     setIsTesting(false);
                 }
@@ -495,6 +604,12 @@
             
             return (
                 <>
+                    <TestResultModal 
+                        isOpen={testModalOpen}
+                        onClose={() => setTestModalOpen(false)}
+                        result={testResult}
+                        isError={testError}
+                    />
                     <div className="toolbar">
                         <div style={{display: 'flex', alignItems: 'center', gap: '8px'}}>
                             <span className={`method ${entry.method}`}>{entry.method}</span>
@@ -578,10 +693,10 @@
             const [selectedEntry, setSelectedEntry] = useState(null);
             const [selectedCacheEntry, setSelectedCacheEntry] = useState(null);
             
-            const { data: cacheData, loading, error } = useFetch('http://localhost:4010/admin/cache/organized');
+            const { data: cacheData, loading, error, refetch } = useFetch('https://dev-cacheflow.pscx.ai/admin/cache/organized');
             
             const { data: entryData } = useFetch(
-                selectedEntry ? `http://localhost:4010/admin/cache/entry?key=${encodeURIComponent(selectedEntry.cache_key)}` : null
+                selectedEntry ? `https://dev-cacheflow.pscx.ai/admin/cache/entry?key=${encodeURIComponent(selectedEntry.id)}` : null
             );
             
             useEffect(() => {
@@ -594,9 +709,9 @@
                 return (
                     <div className="loading">
                         <div className="spinner"></div>
-                        <div>Loading cache data from mock server...</div>
+                        <div>Loading cache data from backend...</div>
                         <div style={{fontSize: '12px', color: '#64748b'}}>
-                            Connecting to http://localhost:4010
+                            Connecting to https://dev-cacheflow.pscx.ai
                         </div>
                     </div>
                 );
@@ -607,13 +722,12 @@
                     <div className="error">
                         <div className="icon">❌</div>
                         <div><strong>Connection Error</strong></div>
-                        <div>Failed to connect to mock server</div>
+                        <div>Failed to connect to backend server</div>
                         <div style={{fontSize: '14px', marginTop: '16px'}}>
                             Error: {error}
                         </div>
                         <div style={{fontSize: '12px', color: '#64748b', marginTop: '16px'}}>
-                            Make sure the mock server is running:<br/>
-                            <code>npm start</code> (in the root directory)
+                            Backend URL: https://dev-cacheflow.pscx.ai
                         </div>
                     </div>
                 );
@@ -626,7 +740,7 @@
                             <span>📊</span>
                             <span>Cache Browser</span>
                         </div>
-                        <CacheStats data={cacheData} />
+                        <CacheStats data={cacheData} onRefresh={refetch} loading={loading} />
                         <ProviderList 
                             providers={cacheData?.providers || []}
                             selectedEntry={selectedEntry}
@@ -638,7 +752,8 @@
                         <div className="content">
                             <div className="editor-area">
                                 <EntryEditor 
-                                    entry={selectedCacheEntry} 
+                                    entry={selectedCacheEntry}
+                                    selectedEntry={selectedEntry}
                                     onSave={() => {
                                         // Refresh the data after save
                                         window.location.reload();
@@ -665,7 +780,7 @@
         // Add some global debug info
         window.TesseractDemo = {
             version: '1.0.0',
-            mockServer: 'http://localhost:4010',
+            backendServer: 'https://dev-cacheflow.pscx.ai',
             features: ['browse', 'edit', 'test', 'save', 'preview']
         };
         

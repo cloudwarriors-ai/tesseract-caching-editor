@@ -1,30 +1,29 @@
-# Multi-stage build for React frontend
-FROM node:20-alpine as builder
+# Single-stage build using Vite dev server
+FROM node:20-bookworm
 
 WORKDIR /app
+
+# Install additional troubleshooting tools
+RUN apt-get update && apt-get install -y \
+    curl \
+    wget \
+    vim \
+    nano \
+    htop \
+    net-tools \
+    iputils-ping \
+    dnsutils \
+    jq \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including devDependencies for build)
-RUN npm ci
+# Install all dependencies
+RUN npm install
 
 # Copy source code
 COPY . .
 
-# Build the React app
-RUN npm run build
-
-# Production stage with nginx
-FROM nginx:alpine
-
-# Copy built app to nginx html directory
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy nginx configuration
-COPY nginx.conf /etc/nginx/conf.d/default.conf
-
-# Expose port 80
-EXPOSE 80
-
-CMD ["nginx", "-g", "daemon off;"]
+# Expose port 5173 (Vite default)
+EXPOSE 5173

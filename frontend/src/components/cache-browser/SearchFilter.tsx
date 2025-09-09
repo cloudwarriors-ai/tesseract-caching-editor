@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
-import { Search, Filter, X, ChevronDown } from 'lucide-react';
+import { Search, Filter, X } from 'lucide-react';
 import { useCacheStore } from '../../stores/cacheStore';
 import { useUiStore } from '../../stores/uiStore';
 import { Input } from '../ui/Input';
@@ -150,7 +150,7 @@ export const SearchFilter = () => {
           </div>
           
           <div className="flex flex-wrap gap-2">
-            {statusCodes.map(({ code, label, color }) => (
+            {statusCodes.map(({ code, label }) => (
               <button
                 key={code}
                 onClick={() => toggleStatusFilter(code)}

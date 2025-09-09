@@ -1,9 +1,9 @@
 import { useState } from 'react';
-import { ChevronRight, ChevronDown, Server, Globe, Zap, Clock } from 'lucide-react';
-import { cn, formatRelativeTime, formatFileSize } from '../../lib/utils';
-import { getProviderIcon, getStatusColor, getMethodColor } from '../../lib/api';
-import { useCacheStore } from '../../stores/cacheStore';
+import { ChevronRight, ChevronDown, Globe, Server, Clock, Zap } from 'lucide-react';
 import { Badge } from '../ui/Badge';
+import { cn, formatRelativeTime, formatFileSize } from '../../lib/utils';
+import { getProviderIcon, getMethodColor } from '../../lib/api';
+import { useCacheStore } from '../../stores/cacheStore';
 import type { ProviderNode, EndpointNode } from '../../types/api';
 
 interface ProviderTreeProps {
