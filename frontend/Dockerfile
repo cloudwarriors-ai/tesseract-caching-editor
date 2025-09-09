@@ -22,8 +22,3 @@ COPY package*.json ./
 # Install all dependencies
 RUN npm install
 
-# Copy source code
-COPY . .
-
-# Expose port 5173 (Vite default)
-EXPOSE 5173

@@ -2,24 +2,28 @@ version: '3.8'
 
 services:
   # React Frontend (Production Mode)
-  tesseract-frontend:
+  tesseract-caching-editor:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: tesseract-frontend
+    image: tesseract-caching-editor
+    container_name: tesseract-caching-editor
     ports:
-       - "3666:80"
-    command: sh -c "npm run build && npm run preview -- --host 0.0.0.0 --port 5173"
+       - "3666:5173"
+    command: sh -c "npm run dev -- --host 0.0.0.0"
+    #command: sleep infinity
     environment:
-      - NODE_ENV=production
-      - VITE_API_URL=https://dev-cacheflow.pscx.ai
+      - VITE_PROXY_TARGET=${CACHEFLOW_URL:-http://cacheflow:8000}
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
     depends_on:
       - production-proxy
     networks:
-      - tesseract-network
+      - proxy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "wget", "-q", "-T", "10", "http://127.0.0.1/health", "-O", "/dev/null"]
+      test: ["CMD", "wget", "-q", "-T", "10", "http://127.0.0.1:5173/health", "-O", "/dev/null"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -41,7 +45,7 @@ services:
       - CACHEFLOW_URL=http://host.docker.internal:8000
       - PORT=4011
     networks:
-      - tesseract-network
+      - proxy
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "node", "-e", "require('http').get('http://localhost:4011/health', (res) => { process.exit(res.statusCode === 200 ? 0 : 1) }).on('error', () => process.exit(1))"]
@@ -53,6 +57,5 @@ services:
       - "host.docker.internal:host-gateway"
 
 networks:
-  tesseract-network:
-    driver: bridge
-    name: tesseract-network
+  proxy:
+    external: true

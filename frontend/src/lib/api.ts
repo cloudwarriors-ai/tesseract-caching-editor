@@ -15,7 +15,7 @@ import type {
 
 // API configuration
 export const API_CONFIG = {
-  BASE_URL: 'https://dev-cacheflow.pscx.ai',
+  BASE_URL: '',  // Empty string for relative URLs that will use the proxy
   ENDPOINTS: {
     ORGANIZED_CACHE: '/admin/cache/organized',
     CACHE_ENTRY: '/admin/cache/entry',

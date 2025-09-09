@@ -1,6 +1,24 @@
-# React + TypeScript + Vite
+# Tesseract Caching Editor Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This frontend application is built with React + TypeScript + Vite and provides a UI for interacting with the Tesseract Caching service.
+
+## Environment Variables
+
+The application uses environment variables to configure the API URL. These can be set in multiple ways:
+
+1. In the `.env` file for local development
+2. Through Docker environment variables when running in a container
+3. At runtime via the `env-config.js` script
+
+### Available Environment Variables
+
+- `VITE_API_URL`: The URL of the cacheflow API (default: `http://cacheflow:8000`)
+
+### Docker Configuration
+
+When running in Docker, the environment variables are injected at runtime using the `docker-entrypoint.sh` script. This allows for dynamic configuration without rebuilding the container.
+
+## Development Setup
 
 Currently, two official plugins are available:
 
