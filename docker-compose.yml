@@ -1,15 +1,14 @@
-version: '3.8'
+
 
 services:
   # React Frontend (Production Mode)
-  tesseract-caching-editor:
+  caching-editor:
     build:
       context: ./frontend
       dockerfile: Dockerfile
     image: tesseract-caching-editor
     container_name: tesseract-caching-editor
-    ports:
-       - "3666:5173"
+    
     command: sh -c "npm run dev -- --host 0.0.0.0"
     #command: sleep infinity
     environment:
@@ -17,28 +16,27 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-    depends_on:
-      - production-proxy
+   
     networks:
       - proxy
     restart: unless-stopped
-    healthcheck:
-      test: ["CMD", "wget", "-q", "-T", "10", "http://127.0.0.1:5173/health", "-O", "/dev/null"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
+    # healthcheck:
+    #   test: ["CMD", "wget", "-q", "-T", "10", "http://127.0.0.1:5173/health", "-O", "/dev/null"]
+    #   interval: 30s
+    #   timeout: 10s
+    #   retries: 3
+    #   start_period: 15s
     labels:
       - "traefik.enable=true"
       - "traefik.docker.network=proxy"
-      - "traefik.http.routers.tesseract-frontend.entrypoints=websecure"
-      - "traefik.http.routers.tesseract-frontend.tls=true"
-      - "traefik.http.routers.tesseract-frontend.tls.certresolver=letsencrypt"
-      - "traefik.http.routers.tesseract-frontend.rule=Host(`dev-caching-editor.pscx.ai`)"
-      - "traefik.http.services.tesseract-frontend.loadbalancer.server.port=80"
-      - "traefik.http.routers.tesseract-frontend-http.entrypoints=web"
-      - "traefik.http.routers.tesseract-frontend-http.rule=Host(`dev-caching-editor.pscx.ai`)"
-      - "traefik.http.routers.tesseract-frontend-http.middlewares=redirect-to-https"
+      - "traefik.http.routers.tesseract-caching-editor.entrypoints=websecure"
+      - "traefik.http.routers.tesseract-caching-editor.tls=true"
+      - "traefik.http.routers.tesseract-caching-editor.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.tesseract-caching-editor.rule=Host(`dev-caching-editor.pscx.ai`)"
+      - "traefik.http.services.tesseract-caching-editor.loadbalancer.server.port=5173"
+      - "traefik.http.routers.tesseract-caching-editor-http.entrypoints=web"
+      - "traefik.http.routers.tesseract-caching-editor-http.rule=Host(`dev-caching-editor.pscx.ai`)"
+      - "traefik.http.routers.tesseract-caching-editor-http.middlewares=redirect-to-https"
 
   # Production Proxy Server (Node.js)
   production-proxy:
@@ -53,7 +51,7 @@ services:
     working_dir: /app
     command: sh -c "npm install && node proxy-server.js"
     environment:
-      - CACHEFLOW_URL=http://host.docker.internal:8000
+      - CACHEFLOW_URL=https://dev-cacheflow.pscx.ai
       - PORT=4011
     networks:
       - proxy
@@ -66,6 +64,7 @@ services:
       start_period: 10s
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    
 
 networks:
   proxy:

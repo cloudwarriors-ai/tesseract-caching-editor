@@ -2,45 +2,63 @@
 
 A React-based frontend for editing cached API responses with real-time validation and testing capabilities.
 
+## Architecture
+
+The application consists of two main components:
+
+1. **Frontend (caching-editor)**: React application with Vite dev server
+2. **Production Proxy**: Node.js CORS proxy server for API requests
+
+### Request Flow
+
+```
+User → Frontend (dev-caching-editor.pscx.ai) → Production Proxy → CacheFlow API
+```
+
+The production proxy bypasses CORS restrictions when the frontend makes API calls to the CacheFlow service.
+
 ## Quick Setup
 
 ### 1. Environment Configuration
 
-Copy the environment template file and configure it:
+The frontend uses environment variables to configure the proxy target:
 
 ```bash
-# Copy the template file
-cp frontend/.env_template frontend/.env
-
-# Edit the .env file with your preferred settings
-# The default configuration should work for most setups
+# frontend/.env
+VITE_PROXY_TARGET=http://cacheflow:8000
 ```
 
 Key environment variables:
 - `VITE_PROXY_TARGET`: URL of the cacheflow backend (default: http://cacheflow:8000)
 
-### 2. Starting the Container
+### 2. Starting the Services
 
 ```bash
-# Build and start the container
-docker compose up tesseract-caching-editor
+# Start both frontend and proxy
+docker compose up -d
 
-# To rebuild the container from scratch
-docker compose down tesseract-caching-editor
-docker rmi tesseract-caching-editor
-docker compose up tesseract-caching-editor
+# To rebuild from scratch
+docker compose down
+docker compose build --no-cache
+docker compose up -d
 ```
 
-The frontend will be available at: http://localhost:3666
+### 3. Accessing the Application
 
-### 3. Connecting to Cacheflow
+- **Frontend**: https://dev-caching-editor.pscx.ai (via Traefik)
+- **Production Proxy**: Internal service only (port 4011)
 
-The application uses a proxy to connect to the cacheflow backend. The connection is configured through the `VITE_PROXY_TARGET` variable in the `.env` file.
+### 4. Production Proxy Configuration
 
-To change the cacheflow backend URL:
-1. Edit the `.env` file
-2. Update the `VITE_PROXY_TARGET` value
-3. Rebuild and restart the container
+The production proxy is configured to:
+- Listen on port 4011 internally
+- Forward requests to CacheFlow at `https://dev-cacheflow.pscx.ai`
+- Handle CORS headers automatically
+- Provide health check endpoint at `/health`
+
+Environment variables for the proxy:
+- `CACHEFLOW_URL`: Target CacheFlow service URL
+- `PORT`: Proxy server port (default: 4011)
 
 ## Troubleshooting
 
