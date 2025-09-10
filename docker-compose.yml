@@ -28,6 +28,17 @@ services:
       timeout: 10s
       retries: 3
       start_period: 15s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=proxy"
+      - "traefik.http.routers.tesseract-frontend.entrypoints=websecure"
+      - "traefik.http.routers.tesseract-frontend.tls=true"
+      - "traefik.http.routers.tesseract-frontend.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.tesseract-frontend.rule=Host(`dev-caching-editor.pscx.ai`)"
+      - "traefik.http.services.tesseract-frontend.loadbalancer.server.port=80"
+      - "traefik.http.routers.tesseract-frontend-http.entrypoints=web"
+      - "traefik.http.routers.tesseract-frontend-http.rule=Host(`dev-caching-editor.pscx.ai`)"
+      - "traefik.http.routers.tesseract-frontend-http.middlewares=redirect-to-https"
 
   # Production Proxy Server (Node.js)
   production-proxy:
